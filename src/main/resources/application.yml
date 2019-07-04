@@ -1,0 +1,3 @@
+thub2api:
+  path:
+    base: http://thub2-prd:8080/api/v2
