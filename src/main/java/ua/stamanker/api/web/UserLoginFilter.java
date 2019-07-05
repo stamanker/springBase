@@ -5,9 +5,11 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.web.authentication.AbstractAuthenticationProcessingFilter;
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 
+import javax.servlet.FilterChain;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -15,11 +17,17 @@ import java.io.IOException;
 import java.util.Collection;
 import java.util.Optional;
 
+import static java.util.Collections.singletonList;
+
 @Slf4j
 public class UserLoginFilter extends AbstractAuthenticationProcessingFilter {
 
     public UserLoginFilter(String defaultFilterProcessesUrl) {
         super(new AntPathRequestMatcher("/api/**", "GET"));
+        log.info("defaultFilterProcessesUrl = " + defaultFilterProcessesUrl);
+        setAuthenticationSuccessHandler((request, response, authentication) -> {
+            log.info("skip...");
+        });
     }
 
     @Override
@@ -31,7 +39,7 @@ public class UserLoginFilter extends AbstractAuthenticationProcessingFilter {
             return new Authentication() {
                 @Override
                 public Collection<? extends GrantedAuthority> getAuthorities() {
-                    return null;
+                    return singletonList(new SimpleGrantedAuthority("USER"));
                 }
 
                 /**
@@ -43,7 +51,7 @@ public class UserLoginFilter extends AbstractAuthenticationProcessingFilter {
                  */
                 @Override
                 public Object getCredentials() {
-                    return null;
+                    return "credentials".getBytes();
                 }
 
                 /**
@@ -55,9 +63,22 @@ public class UserLoginFilter extends AbstractAuthenticationProcessingFilter {
                  */
                 @Override
                 public Object getDetails() {
-                    return null;
+                    return "details";
                 }
 
+                /**
+                 * The identity of the principal being authenticated. In the case of an authentication
+                 * request with username and password, this would be the username. Callers are
+                 * expected to populate the principal for an authentication request.
+                 * <p>
+                 * The <tt>AuthenticationManager</tt> implementation will often return an
+                 * <tt>Authentication</tt> containing richer information as the principal for use by
+                 * the application. Many of the authentication providers will create a
+                 * {@code UserDetails} object as the principal.
+                 *
+                 * @return the <code>Principal</code> being authenticated or the authenticated
+                 * principal after authentication.
+                 */
                 @Override
                 public Object getPrincipal() {
                     return userLogin;
@@ -70,7 +91,7 @@ public class UserLoginFilter extends AbstractAuthenticationProcessingFilter {
 
                 @Override
                 public void setAuthenticated(boolean isAuthenticated) throws IllegalArgumentException {
-
+                    System.out.println("UserLoginFilter.setAuthenticated");
                 }
 
                 @Override
@@ -81,4 +102,12 @@ public class UserLoginFilter extends AbstractAuthenticationProcessingFilter {
         }
         throw new BadCredentialsException("fail");
     }
+
+    @Override
+    protected void successfulAuthentication(HttpServletRequest request, HttpServletResponse response, FilterChain chain, Authentication authResult) throws IOException, ServletException {
+        super.successfulAuthentication(request, response, chain, authResult);
+        // to continue process
+        chain.doFilter(request, response);
+    }
+
 }
